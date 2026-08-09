@@ -1,0 +1,16 @@
+server:
+port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pmtool
+    username: postgres
+    password: postgre123
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+app:
+  jwt:
+    secret: this-is-a-demo-secret-key-change-it-before-going-to-production-1234
+    expiration-ms: 86400000   # 24 hours in milliseconds
