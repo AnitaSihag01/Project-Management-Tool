@@ -20,6 +20,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
 
     public ProjectResponse createProject(ProjectRequest request, User currentUser) {
@@ -81,7 +82,8 @@ public class ProjectService {
         membership.setUser(newMember);
         membership.setRole(ProjectRole.MEMBER);
         memberRepository.save(membership);
-
+        notificationService.notifyUser(newMember,
+                currentUser.getFullName() + " added you to the project \"" + project.getName() + "\"");
         return toMemberResponse(membership);
     }
 

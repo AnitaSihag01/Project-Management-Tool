@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Project Management Tool - Test Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        input, button { padding: 8px; margin: 4px 0; width: 100%; box-sizing: border-box; }
+        #log { background: #f4f4f4; padding: 10px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 13px; }
+        #tasks div { padding: 8px; background: #eee; margin: 4px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<h2>PM Tool Test Client</h2>
+
+<div id="login-section">
+    <input id="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="login()">Log in</button>
+</div>
+
+<div id="board-section" style="display:none;">
+    <p>Logged in as <b id="whoami"></b></p>
+    <input id="projectId" placeholder="Project ID (e.g. 1)" />
+    <button onclick="loadTasks()">Load Board</button>
+
+    <h3>Tasks</h3>
+    <div id="tasks"></div>
+
+    <h4>Create task</h4>
+    <input id="taskTitle" placeholder="Task title" />
+    <button onclick="createTask()">Create</button>
+</div>
+
+<h3>Live event log</h3>
+<div id="log"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

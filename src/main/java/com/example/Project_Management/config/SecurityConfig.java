@@ -27,7 +27,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // not needed for a stateless token-based API
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // register/login must be reachable without a token
+                        .requestMatchers("/api/auth/**").permitAll()// register/login must be reachable without a token
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/app.js").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
