@@ -1,312 +1,307 @@
-#  Project Management Tool
+# Project Management Tool — Collaborative Project Management Backend
 
-A full-stack project management application inspired by Trello and Asana. The application allows users to securely log in, create and manage projects, assign tasks, track progress, and collaborate through task comments and real-time updates.
+A Trello/Asana-style collaborative tool built with Spring Boot as an internship project.
+Users can register/login, create projects, invite teammates, create and assign task
+cards, move them across statuses, comment on tasks, and see live updates + notifications
+over WebSockets — no page refresh needed.
 
-##  Features
+> Built step-by-step, one phase at a time, to understand every layer rather than
+> generating it wholesale. See [Build Log](#build-log--phases) for the order things
+> were implemented and tested in.
 
-*  User login and authentication
-*  JWT-based security
-*  Login frontend
-*  Project and team member management
-*  Create and manage projects
-* Create, update, and delete tasks
-* Assign tasks to team members
-* Track task status and progress
-*  Add comments to tasks
-*  Real-time updates using WebSockets
-*  Spring Security protected APIs
-*  PostgreSQL database
-*  RESTful APIs
+---
 
-##  Tech Stack
+## Tech Stack
 
-### Backend
+- **Java 17**, **Spring Boot 3.3**
+- **Spring Web** — REST API
+- **Spring Data JPA** — database access
+- **PostgreSQL** — database
+- **Spring Security + JJWT** — stateless JWT authentication
+- **Spring Validation** — request validation (`@NotBlank`, `@Email`, etc.)
+- **Spring WebSocket (STOMP over SockJS)** — real-time board updates & private notifications
+- **Lombok** — reduces boilerplate (getters/setters/constructors)
+- **Plain HTML/JS** — minimal test frontend, served as static files by Spring Boot itself
 
-* Java
-* Spring Boot
-* Spring Security
-* JWT
-* Spring Data JPA
-* Hibernate
-* WebSocket
-* STOMP
-* Maven
+---
 
-### Frontend
+## Project Structure
 
-* Thymeleaf
-* HTML
-* CSS
-* JavaScript
+```
+src/main/java/com/pmtool/
+├── PmToolApplication.java
+├── model/              Entities: User, Project, ProjectMember, TaskCard, Comment, Notification
+│   └── type/            Enums: ProjectRole, TaskStatus
+├── repository/          Spring Data JPA repositories
+├── security/            JWT plumbing: JwtUtil, JwtAuthFilter, CurrentUserProvider
+├── config/              SecurityConfig, WebSocketConfig
+├── dto/                 Request/response objects — entities are never returned directly
+├── service/             Business logic: AuthService, CustomUserDetailsService,
+│                        ProjectService, TaskService, CommentService, NotificationService
+├── controller/          REST endpoints
+└── exception/           ApiException + GlobalExceptionHandler for clean JSON errors
 
-### Database
-
-* PostgreSQL
-
-## 📂 Project Structure
-
-```text
-src
-└── main
-    ├── java
-    │   └── com.example.Project_Management
-    │       ├── controller
-    │       ├── service
-    │       ├── repository
-    │       ├── entity
-    │       ├── dto
-    │       ├── security
-    │       ├── websocket
-    │       └── exception
-    │
-    └── resources
-        ├── templates
-        ├── static - index.html , app.js
-        └── application.yml
+src/main/resources/
+├── application.yml
+└── static/              Minimal test frontend (served at http://localhost:8080/)
+    ├── index.html
+    └── app.js
 ```
 
-## 🔐 Authentication
+**Package conventions used in this project:**
+- All business logic lives in `service/`, including `CustomUserDetailsService`
+  (even though it implements a Spring Security interface, it's still "business logic":
+  looking up a user).
+- `security/` is reserved for pure security-framework plumbing that has no reason to
+  exist outside an auth context (`JwtUtil`, `JwtAuthFilter`, `CurrentUserProvider`).
+- Enums live in their own `model/type` sub-package, separate from the entities that use them.
+- The frontend lives in `static/`, NOT `templates/` — `templates/` is for server-rendered
+  views (Thymeleaf etc.); this app's HTML is a static file that calls the REST API via JS.
 
-The application uses **Spring Security and JWT** to secure user authentication and protected resources.
+---
 
-```text
-Login
-  ↓
-Authentication
-  ↓
-JWT Token
-  ↓
-Authenticated Request
-  ↓
-Spring Security
-  ↓
-Protected API
-```
+## Setup
 
-Passwords are securely hashed before being stored in the database.
+### 1. Prerequisites
+- JDK 17+
+- Maven
+- PostgreSQL running locally
 
-##  Real-Time Updates
-
-The project uses **WebSocket** to support real-time communication between connected users.
-
-```text
-User A
-   │
-   │ Action
-   ▼
-Spring Boot
-   │
-   │ WebSocket
-   ▼
-Connected Users
-   │
-   ▼
-Real-Time Update
-```
-
-This allows changes and notifications to be delivered without requiring users to continuously refresh the page.
-
-##  Task Management
-
-Tasks can be created and managed within projects.
-
-Each task can contain:
-
-* Title
-* Description
-* Status
-* Priority
-* Due date
-* Assigned user
-* Comments
-
-Example workflow:
-
-```text
-TODO → IN_PROGRESS → DONE
-```
-
-## 💬 Task Comments
-
-Users can communicate within individual tasks by adding comments.
-
-```text
-Task
- │
- ├── Comment 1
- ├── Comment 2
- └── Comment 3
-```
-
-This keeps project-related communication connected to the relevant task.
-
-## 🌐 API Overview
-
-### Authentication
-
-```http
-POST /api/auth/register
-POST /api/auth/login
-```
-
-### Projects
-
-```http
-POST   /api/projects
-GET    /api/projects
-GET    /api/projects/{id}
-PUT    /api/projects/{id}
-DELETE /api/projects/{id}
-```
-
-### Tasks
-
-```http
-POST   /api/projects/{projectId}/tasks
-GET    /api/projects/{projectId}/tasks
-GET    /api/tasks/{id}
-PUT    /api/tasks/{id}
-DELETE /api/tasks/{id}
-```
-
-### Comments
-
-```http
-POST /api/tasks/{taskId}/comments
-GET  /api/tasks/{taskId}/comments
-DELETE /api/comments/{id}
-```
-
-##  Main Entities
-
-The application is built around the following entities:
-
-* **User** – Stores user authentication and account information.
-* **Project** – Represents a project created and managed by users.
-* **Project Member** – Associates users with projects.
-* **Task** – Represents work assigned to a project member.
-* **Comment** – Allows users to communicate within tasks.
-
-```text
-User
- │
- ├──────────────┐
- │              │
- ▼              ▼
-Project     Project Member
- │
- ▼
-Task
- │
- ▼
-Comment
-```
-
-##  Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/AnitaSihag01/Project-Management-Tool.git
-```
-
-### 2. Configure PostgreSQL
-
-Create a PostgreSQL database:
-
+### 2. Create the database
 ```sql
-CREATE DATABASE project_management;
+CREATE DATABASE pmtool;
 ```
 
-Configure your database credentials in `application.properties`:
+### 3. Configure `src/main/resources/application.yml`
+```yaml
+server:
+  port: 8080
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/project_management
-spring.datasource.username=your_username
-spring.datasource.password=your_password
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pmtool
+    username: postgres
+    password: yourpassword
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+app:
+  jwt:
+    secret: this-is-a-demo-secret-key-change-it-before-going-to-production-1234
+    expiration-ms: 86400000   # 24 hours
+```
+Note: `app.jwt.secret` must be **32+ characters** (required for HMAC-SHA256 signing).
+Never commit a real production secret — this demo value is fine for local dev only.
+
+### 4. Add JJWT to `pom.xml`
+Spring Initializr doesn't include this — add manually inside `<dependencies>`:
+```xml
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-api</artifactId>
+    <version>0.12.5</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-impl</artifactId>
+    <version>0.12.5</version>
+    <scope>runtime</scope>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-jackson</artifactId>
+    <version>0.12.5</version>
+    <scope>runtime</scope>
+</dependency>
 ```
 
-### 3. Configure JWT
-
-Configure the JWT secret and related security properties according to your local environment.
-
-### 4. Run the application
-
-Using Maven:
-
+### 5. Run
 ```bash
 mvn spring-boot:run
 ```
+This starts **both** the API and the static test frontend on `http://localhost:8080`
+(no separate server needed — Spring Boot serves everything in `static/` automatically).
 
-Or run the main Spring Boot application class from IntelliJ IDEA.
+Open `http://localhost:8080/index.html` to use the test client, or drive the API
+directly with Postman.
 
-##  Testing
+Tables are auto-created on first run (`ddl-auto: update`) — verify with
+`psql`/pgAdmin/DBeaver that `users`, `projects`, `project_members`, `task_cards`,
+`comments`, and `notifications` all exist.
 
-The APIs can be tested using:
+---
 
-* Postman
-* Browser
-* Frontend UI
-* JUnit / Spring Boot tests
+## Authentication
 
-Recommended flow:
+All endpoints except `/api/auth/**`, `/ws/**`, and the static frontend files require:
+```
+Authorization: Bearer <token>
+```
+Get a token from `/api/auth/register` or `/api/auth/login`.
 
-```text
-Register
-   ↓
-Login
-   ↓
-Receive JWT
-   ↓
-Create Project
-   ↓
-Add Members
-   ↓
-Create Task
-   ↓
-Assign Task
-   ↓
-Add Comment
-   ↓
-Receive Real-Time Updates
+Auth is **stateless** — no server-side session is stored. The JWT (signed, 24h expiry)
+is the only proof of identity, verified fresh on every request by `JwtAuthFilter`.
+The user's **email** doubles as their Spring Security username — this matters for
+WebSocket routing too (see below).
+
+---
+
+## API Reference
+
+### Auth — public
+
+| Method | Endpoint | Body | Notes |
+|---|---|---|---|
+| POST | `/api/auth/register` | `{ fullName, email, password }` | password min 6 chars |
+| POST | `/api/auth/login` | `{ email, password }` | same error message for "no such user" and "wrong password" — prevents user enumeration |
+
+Both return:
+```json
+{ "token": "...", "userId": 1, "fullName": "...", "email": "..." }
 ```
 
-##  Future Enhancements
+### Projects — requires token
 
-*  Advanced notification system
-*  Email notifications
-*  File attachments
-*  Task search and filtering
-*  Calendar and deadline view
-*  Project analytics dashboard
-*  Drag-and-drop Kanban board
-*  Dark mode
-*  Improved team collaboration features
+| Method | Endpoint | Body | Who can call it |
+|---|---|---|---|
+| POST | `/api/projects` | `{ name, description }` | any authenticated user (becomes OWNER) |
+| GET | `/api/projects` | — | any authenticated user (their own projects) |
+| POST | `/api/projects/{id}/members` | `{ email }` | project OWNER only → also sends a notification to the invited user |
+| GET | `/api/projects/{id}/members` | — | any project MEMBER |
 
-##  Learning Outcomes
+### Tasks — requires token, caller must be a project MEMBER
 
-This project demonstrates practical experience with:
+| Method | Endpoint | Body | Notes |
+|---|---|---|---|
+| POST | `/api/projects/{projectId}/tasks` | `{ title, description?, assigneeEmail? }` | assignee must already be a project member; sends notification + broadcasts board update |
+| GET | `/api/projects/{projectId}/tasks` | — | lists all tasks on the board |
+| PUT | `/api/tasks/{taskId}/status` | `{ status: "TODO" \| "IN_PROGRESS" \| "DONE" }` | broadcasts board update |
+| PUT | `/api/tasks/{taskId}/assignee` | `{ email }` | assignee must be a project member; sends notification + broadcasts board update |
 
-* Spring Boot application development
-* REST API development
-* JWT authentication
-* Spring Security
-* Secure login implementation
-* JPA and Hibernate
-* PostgreSQL database integration
-* Entity relationships
-* CRUD operations
-* DTO-based architecture
-* Exception handling
-* Thymeleaf frontend development
-* WebSocket real-time communication
-* Full-stack application development
+### Comments — requires token, caller must be a project MEMBER
 
-##  Author
+| Method | Endpoint | Body |
+|---|---|---|
+| POST | `/api/tasks/{taskId}/comments` | `{ content }` |
+| GET | `/api/tasks/{taskId}/comments` | — (oldest first) |
 
-**Anita Sihag**
+### Notifications — requires token
 
-A full-stack Java/Spring Boot project built to practice backend development, authentication, database design, frontend integration, and real-time collaborative features.
+| Method | Endpoint | Notes |
+|---|---|---|
+| GET | `/api/notifications` | past notifications for the logged-in user, newest first |
+
+---
+
+## Real-time layer (WebSocket / STOMP)
+
+Connects to `ws://localhost:8080/ws` via SockJS (falls back to polling transports if
+raw WebSockets are blocked by a network).
+
+| Destination | Scope | Fires on |
+|---|---|---|
+| `/topic/projects/{projectId}` | Broadcast — everyone subscribed to that project | task created, task status changed, task reassigned, new comment posted |
+| `/user/queue/notifications` | Private — just the intended user | added to a project, assigned a task, someone commented on your assigned task |
+
+Design choice: board-update messages carry no payload, just a signal
+(`"BOARD_UPDATED"`) — the frontend reacts by re-fetching the task list rather than
+trying to merge partial state. Simpler and more reliable than diffing client-side
+state by hand, at the cost of one extra GET per update.
+
+`convertAndSendToUser(email, "/queue/notifications", payload)` relies on the fact that
+the user's **email** is what Spring Security treats as their username (set in
+`CustomUserDetailsService`) — this is what lets the server target a specific
+person's open WebSocket session by email alone.
+
+---
+
+## Error format
+
+All errors come back as consistent JSON via `GlobalExceptionHandler`:
+```json
+{
+  "message": "Only the project owner can do this",
+  "status": 403,
+  "timestamp": "2026-08-09T12:00:00"
+}
+```
+
+| Status | Meaning in this app |
+|---|---|
+| 400 | Validation failed (`@Valid` on a DTO) |
+| 401 | Bad login credentials, or invalid/missing token |
+| 403 | Authenticated, but not allowed to do this (wrong role/not a member) |
+| 404 | Resource doesn't exist |
+| 409 | Conflict (duplicate email, already a member, etc.) |
+
+---
+
+## Key design decisions
+
+- **DTOs everywhere, entities never returned directly** — keeps the password hash out
+  of responses and decouples the API shape from the DB schema.
+- **`ProjectMember` as an explicit join entity** (not a raw `@ManyToMany`) — needed
+  to store a `role` (OWNER/MEMBER) on the relationship itself.
+- **No bidirectional JPA relationships** (no `@OneToMany` lists on the "one" side) —
+  avoids infinite JSON recursion and lazy-loading foot-guns; related data is fetched
+  via repository queries instead (e.g. `taskRepository.findByProject(project)`).
+- **Authorization checks live in the service layer** (`assertIsMember`,
+  `assertIsOwner` in `ProjectService`), reused by `TaskService`/`CommentService`
+  rather than duplicated — each throws `ApiException` and lets
+  `GlobalExceptionHandler` turn it into a clean response.
+- **Assigning a task checks membership twice**: first that the assignee's email
+  belongs to a real account (404 if not), then that they're actually a member of
+  *this* project (403 if not) — deliberately two different status codes for two
+  different failure reasons.
+- **Board updates are "refetch" signals, not data payloads** — simpler and more
+  robust than syncing partial state across clients.
+- **Frontend lives in `static/`, not `templates/`** — it's a static file calling the
+  REST API via `fetch()`, not server-rendered HTML, so `templates/` (reserved for
+  engines like Thymeleaf) would be the wrong location and wouldn't serve correctly.
+
+---
+
+## Build Log / Phases
+
+1. DONE — Project setup — Spring Initializr, dependencies, `application.yml`, boots successfully
+2. DONE — Entities — User, Project, ProjectMember, TaskCard, Comment, Notification
+3. DONE — Repositories — Spring Data JPA interfaces
+4. DONE — Security & JWT — password hashing, `JwtAuthFilter`, register/login working end-to-end
+5. DONE — Project & membership APIs — create project, invite members, owner-only checks tested (403 confirmed for non-owners)
+6. DONE — Task APIs — create/list/move/assign, tested including 404 (no such user) vs 403 (not a project member) on assignment
+7. DONE — Comments API — tested with two different authors, 403 for non-members, 400 for empty content
+8. DONE — WebSockets — `WebSocketConfig`, board broadcast on task/comment changes, private notifications on invite/assign
+9. IN PROGRESS — Minimal test frontend (static HTML/JS) — login confirmed working, live two-tab
+   board-update + notification test in progress
+10. TODO — Polish & final end-to-end walkthrough
+
+---
+
+## Testing notes
+
+Tested manually via Postman + the browser test client:
+- Register/login, including negative cases (duplicate email → 409, wrong password → 401)
+- Create project → creator becomes OWNER
+- Invite member as owner → succeeds; as non-owner → 403 confirmed
+- Create task (unassigned and pre-assigned), list tasks, move status, reassign
+- Assign to nonexistent email → 404; assign to real user not on the project → 403 (both confirmed as distinct cases)
+- Comments from multiple distinct users on the same task, oldest-first ordering
+- Comment as non-member → 403; empty comment → 400
+- WebSocket connects successfully from the browser test client (confirmed via "WebSocket connected" in the live log)
+- Two-tab live board-update and private-notification test — in progress
+
+## Known gotchas hit during development (worth remembering)
+
+- `.orElseThrow(() -> new X(...))` — the lambda **returns** the exception, it never
+  contains a `throw` statement itself.
+- JSON keys must match Java field names **exactly** (`fullName`, not `full_name`) —
+  Jackson doesn't auto-convert casing without an explicit `@JsonProperty`.
+- A stray trailing space in a Postman URL gets encoded as `%20`, silently breaking
+  the route match and producing a confusing 500 instead of a clean 404.
+- `templates/` vs `static/` — static assets (plain HTML/JS/CSS meant to be served
+  as-is) belong in `static/`; `templates/` is only for server-side rendering engines.
+- Double-check which token is actually loaded in Postman before debugging "wrong
+  owner" 403s — an unexpected owner name in a response is often just a stale/wrong
+  token, not a logic bug.
