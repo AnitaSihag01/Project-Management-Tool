@@ -8,7 +8,7 @@ over WebSockets — no page refresh needed.
 > Built step-by-step, one phase at a time, to understand every layer rather than
 > generating it wholesale. See [Build Log](#build-log--phases) for the order things
 > were implemented and tested in.
-
+   
 ---
 
 ## Tech Stack
