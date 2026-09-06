@@ -5,6 +5,8 @@ let token = null;
 let currentProjectId = null;
 let stompClient = null;
 
+let boardSubscription = null;
+
 function log(msg) {
     const el = document.getElementById("log");
     el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
@@ -41,10 +43,10 @@ function connectWebSocket() {
     stompClient = Stomp.over(socket);
     stompClient.debug = null;
 
-    stompClient.connect({}, () => {
+    stompClient.connect({ Authorization: "Bearer " + token }, () => {
         log("WebSocket connected");
 
-        // Private channel - notifications meant only for this user
+
         stompClient.subscribe("/user/queue/notifications", (message) => {
             const notif = JSON.parse(message.body);
             log("🔔 NOTIFICATION: " + notif.message);
@@ -68,8 +70,8 @@ async function loadTasks() {
 
     log(`Loaded ${tasks.length} task(s) for project ${currentProjectId}`);
 
-    // Subscribe to this project's shared board channel
-    stompClient.subscribe(`/topic/projects/${currentProjectId}`, (message) => {
+    if (boardSubscription) boardSubscription.unsubscribe();
+    boardSubscription = stompClient.subscribe(`/topic/projects/${currentProjectId}`, (message) => {
         log("📋 BOARD EVENT: " + message.body + " — refreshing...");
         loadTasks();
     });
@@ -85,5 +87,4 @@ async function createTask() {
     });
 
     document.getElementById("taskTitle").value = "";
-    // no manual reload here - the WebSocket broadcast should trigger it automatically
 }
