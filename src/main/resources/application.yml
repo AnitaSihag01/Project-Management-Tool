@@ -3,8 +3,8 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/pmtool
-    username: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/pmtool}
+    username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgre123}
   jpa:
     hibernate:
