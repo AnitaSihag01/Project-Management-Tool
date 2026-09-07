@@ -1,42 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Project Management Tool - Test Client</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PM Tool</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
-        input, button { padding: 8px; margin: 4px 0; width: 100%; box-sizing: border-box; }
-        #log { background: #f4f4f4; padding: 10px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 13px; }
-        #tasks div { padding: 8px; background: #eee; margin: 4px 0; border-radius: 4px; }
+        body { background: #f5f6f8; }
+        .board-col { background: #fff; border-radius: 8px; min-height: 300px; padding: 12px; }
+        .board-col h6 { font-weight: 600; color: #555; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.03em; }
+        .task-card { background: #fff; border: 1px solid #e3e5e8; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+        .task-card select { font-size: 0.8rem; }
+        .comment-box { background: #f8f9fa; border-radius: 4px; padding: 6px 8px; font-size: 0.82rem; margin-top: 6px; }
+        #log { background: #1e1e1e; color: #9cdcfe; font-family: monospace; font-size: 12px; padding: 10px; height: 140px; overflow-y: auto; border-radius: 6px; }
+        #login-section { max-width: 380px; margin: 80px auto; }
+        .sidebar { background: #fff; border-radius: 8px; padding: 16px; }
+        #notifDropdown { max-height: 300px; overflow-y: auto; }
+        .notif-item { font-size: 0.85rem; padding: 6px 10px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
-<h2>PM Tool Test Client</h2>
 
-<div id="login-section">
-    <input id="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
-    <button onclick="login()">Log in</button>
+<nav class="navbar navbar-dark bg-dark px-3 d-flex justify-content-between">
+    <span class="navbar-brand mb-0 h1">PM Tool</span>
+    <div class="d-flex align-items-center gap-3" id="navRight" style="display:none;">
+        <div class="dropdown">
+            <button class="btn btn-outline-light btn-sm position-relative" data-bs-toggle="dropdown" onclick="loadNotifications()">
+                🔔 <span id="notifCount" class="badge bg-danger" style="display:none;">0</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-0" id="notifDropdown" style="min-width:280px;">
+                <div class="p-2 text-muted small">No notifications yet</div>
+            </div>
+        </div>
+        <span class="text-light" id="whoami"></span>
+        <button class="btn btn-sm btn-outline-light" onclick="logout()">Log out</button>
+    </div>
+</nav>
+
+<div id="login-section" class="card shadow-sm p-4">
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link active" onclick="showTab('login')" id="loginTabBtn">Log in</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="showTab('register')" id="registerTabBtn">Register</button></li>
+    </ul>
+
+    <div id="loginTab">
+        <input id="email" class="form-control mb-2" placeholder="Email" />
+        <input id="password" type="password" class="form-control mb-3" placeholder="Password" />
+        <button class="btn btn-primary w-100" onclick="login()">Log in</button>
+    </div>
+
+    <div id="registerTab" style="display:none;">
+        <input id="regFullName" class="form-control mb-2" placeholder="Full name" />
+        <input id="regEmail" class="form-control mb-2" placeholder="Email" />
+        <input id="regPassword" type="password" class="form-control mb-3" placeholder="Password (min 6 chars)" />
+        <button class="btn btn-success w-100" onclick="register()">Create account</button>
+    </div>
 </div>
 
-<div id="board-section" style="display:none;">
-    <p>Logged in as <b id="whoami"></b></p>
-    <input id="projectId" placeholder="Project ID (e.g. 1)" />
-    <button onclick="loadTasks()">Load Board</button>
+<div id="board-section" class="container-fluid py-4" style="display:none;">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="sidebar mb-3">
+                <label class="form-label small text-muted mb-1">Project</label>
+                <select id="projectSelect" class="form-select mb-2" onchange="onProjectChange()"></select>
+                <div class="input-group input-group-sm">
+                    <input id="newProjectName" class="form-control" placeholder="New project name" />
+                    <button class="btn btn-outline-primary" onclick="createProject()">Add</button>
+                </div>
+            </div>
 
-    <h3>Tasks</h3>
-    <div id="tasks"></div>
+            <div class="sidebar">
+                <label class="form-label small text-muted mb-1">Members</label>
+                <div id="membersList" class="mb-2 small"></div>
+                <div class="input-group input-group-sm">
+                    <input id="newMemberEmail" class="form-control" placeholder="Invite by email" />
+                    <button class="btn btn-outline-secondary" onclick="addMember()">Invite</button>
+                </div>
+            </div>
+        </div>
 
-    <h4>Create task</h4>
-    <input id="taskTitle" placeholder="Task title" />
-    <button onclick="createTask()">Create</button>
+        <div class="col-md-9">
+            <div class="d-flex gap-2 mb-3">
+                <input id="taskTitle" class="form-control" placeholder="New task title" style="max-width:300px" />
+                <button class="btn btn-success" onclick="createTask()">Add task</button>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="board-col"><h6>To Do</h6><div id="col-TODO"></div></div>
+                </div>
+                <div class="col-md-4">
+                    <div class="board-col"><h6>In Progress</h6><div id="col-IN_PROGRESS"></div></div>
+                </div>
+                <div class="col-md-4">
+                    <div class="board-col"><h6>Done</h6><div id="col-DONE"></div></div>
+                </div>
+            </div>
+
+            <h6 class="mt-4 mb-2 text-muted">Live event log</h6>
+            <div id="log"></div>
+        </div>
+    </div>
 </div>
 
-<h3>Live event log</h3>
-<div id="log"></div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
