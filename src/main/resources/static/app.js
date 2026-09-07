@@ -48,6 +48,10 @@ async function login() {
 }
 
 async function register() {
+    async function register() {
+        const btn = event.target;
+        if (btn.disabled) return;
+        btn.disabled = true;
     const fullName = document.getElementById("regFullName").value;
     const email = document.getElementById("regEmail").value;
     const password = document.getElementById("regPassword").value;
