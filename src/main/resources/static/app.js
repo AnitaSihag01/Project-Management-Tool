@@ -48,7 +48,6 @@ async function login() {
 }
 
 async function register() {
-    async function register() {
         const btn = event.target;
         if (btn.disabled) return;
         btn.disabled = true;
