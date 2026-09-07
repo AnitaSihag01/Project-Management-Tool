@@ -6,11 +6,17 @@ let currentProjectId = null;
 let currentMembers = [];
 let stompClient = null;
 let boardSubscription = null;
+let notifCount = 0;
 
 function log(msg) {
     const el = document.getElementById("log");
     el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
     el.scrollTop = el.scrollHeight;
+}
+
+function initials(name) {
+    if (!name) return "?";
+    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join("");
 }
 
 function showTab(tab) {
@@ -30,36 +36,46 @@ function enterApp(data) {
     token = data.token;
     document.getElementById("whoami").textContent = data.fullName;
     document.getElementById("login-section").style.display = "none";
-    document.getElementById("board-section").style.display = "block";
+    document.getElementById("board-section").classList.add("show");
     document.getElementById("navRight").style.display = "flex";
     connectWebSocket();
     loadProjects();
 }
 
 async function login() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = "Logging in…";
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const res = await fetch(`${API}/auth/login`, {
-        method: "POST", headers: authHeaders(true),
-        body: JSON.stringify({ email, password })
-    });
-    if (!res.ok) { log("Login failed: " + (await res.text())); return; }
-    enterApp(await res.json());
+    try {
+        const res = await fetch(`${API}/auth/login`, {
+            method: "POST", headers: authHeaders(true),
+            body: JSON.stringify({ email, password })
+        });
+        if (!res.ok) { log("Login failed: " + (await res.text())); return; }
+        enterApp(await res.json());
+    } finally {
+        btn.disabled = false; btn.textContent = "Log in";
+    }
 }
 
 async function register() {
-        const btn = event.target;
-        if (btn.disabled) return;
-        btn.disabled = true;
-    const fullName = document.getElementById("regFullName").value;
-    const email = document.getElementById("regEmail").value;
-    const password = document.getElementById("regPassword").value;
-    const res = await fetch(`${API}/auth/register`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password })
-    });
-    if (!res.ok) { log("Registration failed: " + (await res.text())); return; }
-    enterApp(await res.json());
+    const btn = event.target;
+    if (btn.disabled) return;
+    btn.disabled = true; btn.textContent = "Creating account…";
+    try {
+        const fullName = document.getElementById("regFullName").value;
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPassword").value;
+        const res = await fetch(`${API}/auth/register`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fullName, email, password })
+        });
+        if (!res.ok) { log("Registration failed: " + (await res.text())); return; }
+        enterApp(await res.json());
+    } finally {
+        btn.disabled = false; btn.textContent = "Create account";
+    }
 }
 
 function logout() {
@@ -123,9 +139,13 @@ async function loadMembers() {
     const res = await fetch(`${API}/projects/${currentProjectId}/members`, { headers: authHeaders() });
     currentMembers = res.ok ? await res.json() : [];
     const list = document.getElementById("membersList");
-    list.innerHTML = currentMembers.map(m =>
-        `<div>${m.fullName} <span class="text-muted">(${m.role})</span></div>`
-    ).join("") || `<div class="text-muted">No members</div>`;
+    list.innerHTML = currentMembers.length
+        ? currentMembers.map(m => `
+            <div class="member-row">
+              <span class="avatar">${initials(m.fullName)}</span>
+              <span>${m.fullName} <span style="color:var(--ink-soft)">· ${m.role}</span></span>
+            </div>`).join("")
+        : `<div class="empty-note">No members yet</div>`;
 }
 
 async function addMember() {
@@ -145,7 +165,10 @@ async function addMember() {
 async function loadTasks() {
     const res = await fetch(`${API}/projects/${currentProjectId}/tasks`, { headers: authHeaders() });
     const tasks = await res.json();
-    ["TODO", "IN_PROGRESS", "DONE"].forEach(s => document.getElementById(`col-${s}`).innerHTML = "");
+    ["TODO", "IN_PROGRESS", "DONE"].forEach(s => {
+        document.getElementById(`col-${s}`).innerHTML = "";
+        document.getElementById(`count-${s}`).textContent = tasks.filter(t => t.status === s).length;
+    });
     tasks.forEach(renderTaskCard);
     log(`Loaded ${tasks.length} task(s)`);
 
@@ -159,26 +182,24 @@ async function loadTasks() {
 function renderTaskCard(t) {
     const col = document.getElementById(`col-${t.status}`);
     const card = document.createElement("div");
-    card.className = "task-card";
+    card.className = "card";
 
     const nextStatus = { TODO: "IN_PROGRESS", IN_PROGRESS: "DONE", DONE: null }[t.status];
     const moveBtn = nextStatus
-        ? `<button class="btn btn-sm btn-outline-secondary mt-2" onclick="moveTask(${t.id}, '${nextStatus}')">Move to ${nextStatus.replace("_", " ")} →</button>`
+        ? `<button class="move" onclick="moveTask(${t.id}, '${nextStatus}')">Move to ${nextStatus.replace("_", " ")} →</button>`
         : "";
 
     const assigneeOptions = [`<option value="">Unassigned</option>`]
         .concat(currentMembers.map(m =>
-            `<option value="${m.email}" ${m.email === (t.assigneeName && m.fullName === t.assigneeName ? m.email : "") ? "selected" : ""}>${m.fullName}</option>`
+            `<option value="${m.email}" ${t.assigneeName === m.fullName ? "selected" : ""}>${m.fullName}</option>`
         )).join("");
 
     card.innerHTML = `
-        <div class="fw-semibold">#${t.id} ${t.title}</div>
-        <select class="form-select form-select-sm mt-1" onchange="assignTask(${t.id}, this.value)">
-            ${assigneeOptions}
-        </select>
+        <div class="title">#${t.id} ${t.title}</div>
+        <select onchange="assignTask(${t.id}, this.value)">${assigneeOptions}</select>
         ${moveBtn}
         <div>
-            <button class="btn btn-sm btn-link p-0 mt-1" onclick="toggleComments(${t.id}, this)">💬 Comments</button>
+            <button class="comments-toggle" onclick="toggleComments(${t.id})">Comments</button>
             <div id="comments-${t.id}" style="display:none;"></div>
         </div>
     `;
@@ -186,33 +207,39 @@ function renderTaskCard(t) {
 }
 
 async function moveTask(taskId, newStatus) {
-    await fetch(`${API}/tasks/${taskId}/status`, {
+    const res = await fetch(`${API}/tasks/${taskId}/status`, {
         method: "PUT", headers: authHeaders(true),
         body: JSON.stringify({ status: newStatus })
     });
+    if (!res.ok) { log("Move task failed: " + (await res.text())); return; }
+    await loadTasks();
 }
 
 async function assignTask(taskId, email) {
     if (!email) return;
-    await fetch(`${API}/tasks/${taskId}/assignee`, {
+    const res = await fetch(`${API}/tasks/${taskId}/assignee`, {
         method: "PUT", headers: authHeaders(true),
         body: JSON.stringify({ email })
     });
+    if (!res.ok) { log("Assign failed: " + (await res.text())); return; }
+    await loadTasks();
 }
 
 async function createTask() {
     const title = document.getElementById("taskTitle").value;
     if (!title.trim()) return;
-    await fetch(`${API}/projects/${currentProjectId}/tasks`, {
+    const res = await fetch(`${API}/projects/${currentProjectId}/tasks`, {
         method: "POST", headers: authHeaders(true),
         body: JSON.stringify({ title })
     });
+    if (!res.ok) { log("Create task failed: " + (await res.text())); return; }
     document.getElementById("taskTitle").value = "";
+    await loadTasks();
 }
 
 // ---------- Comments ----------
 
-async function toggleComments(taskId, btn) {
+async function toggleComments(taskId) {
     const box = document.getElementById(`comments-${taskId}`);
     if (box.style.display === "none") {
         box.style.display = "block";
@@ -224,16 +251,15 @@ async function toggleComments(taskId, btn) {
 
 async function loadComments(taskId) {
     const res = await fetch(`${API}/tasks/${taskId}/comments`, { headers: authHeaders() });
-    const comments = await res.json();
+    const comments = res.ok ? await res.json() : [];
     const box = document.getElementById(`comments-${taskId}`);
-    box.innerHTML = comments.map(c =>
-        `<div class="comment-box"><b>${c.authorName}:</b> ${c.content}</div>`
-    ).join("") + `
-        <div class="input-group input-group-sm mt-1">
-            <input id="newComment-${taskId}" class="form-control" placeholder="Write a comment" />
-            <button class="btn btn-outline-primary" onclick="addComment(${taskId})">Send</button>
-        </div>
-    `;
+    box.innerHTML = (comments.length
+        ? comments.map(c => `<div class="comment-box"><b>${c.authorName}:</b> ${c.content}</div>`).join("")
+        : `<div class="comment-box" style="color:var(--ink-soft);">No comments yet</div>`)
+      + `<div class="comment-row">
+            <input id="newComment-${taskId}" placeholder="Write a comment" />
+            <button class="btn btn-outline btn-sm" onclick="addComment(${taskId})">Send</button>
+         </div>`;
 }
 
 async function addComment(taskId) {
@@ -250,22 +276,28 @@ async function addComment(taskId) {
 
 // ---------- Notifications ----------
 
-let notifCount = 0;
-
 function bumpNotifBadge() {
     notifCount++;
     const badge = document.getElementById("notifCount");
     badge.textContent = notifCount;
-    badge.style.display = "inline-block";
+    badge.style.display = "flex";
+}
+
+function toggleNotifs() {
+    const panel = document.getElementById("notifDropdown");
+    const opening = panel.style.display !== "block";
+    panel.style.display = opening ? "block" : "none";
+    if (opening) loadNotifications();
 }
 
 async function loadNotifications() {
     const res = await fetch(`${API}/notifications`, { headers: authHeaders() });
-    const notifs = await res.json();
+    const notifs = res.ok ? await res.json() : [];
     const dropdown = document.getElementById("notifDropdown");
     dropdown.innerHTML = notifs.length
         ? notifs.map(n => `<div class="notif-item">${n.message}</div>`).join("")
-        : `<div class="p-2 text-muted small">No notifications yet</div>`;
+        : `<div class="notif-empty">No notifications yet</div>`;
     notifCount = 0;
     document.getElementById("notifCount").style.display = "none";
 }
+</script>

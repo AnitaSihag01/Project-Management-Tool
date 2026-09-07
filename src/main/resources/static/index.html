@@ -4,108 +4,213 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PM Tool</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        body { background: #f5f6f8; }
-        .board-col { background: #fff; border-radius: 8px; min-height: 300px; padding: 12px; }
-        .board-col h6 { font-weight: 600; color: #555; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.03em; }
-        .task-card { background: #fff; border: 1px solid #e3e5e8; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
-        .task-card select { font-size: 0.8rem; }
-        .comment-box { background: #f8f9fa; border-radius: 4px; padding: 6px 8px; font-size: 0.82rem; margin-top: 6px; }
-        #log { background: #1e1e1e; color: #9cdcfe; font-family: monospace; font-size: 12px; padding: 10px; height: 140px; overflow-y: auto; border-radius: 6px; }
-        #login-section { max-width: 380px; margin: 80px auto; }
-        .sidebar { background: #fff; border-radius: 8px; padding: 16px; }
-        #notifDropdown { max-height: 300px; overflow-y: auto; }
-        .notif-item { font-size: 0.85rem; padding: 6px 10px; border-bottom: 1px solid #eee; }
+        :root{
+          --ink:#1B2430; --ink-soft:#5B6472; --bg:#F6F5F2; --surface:#FFFFFF;
+          --line:#E4E2DC; --accent:#E8871E; --accent-ink:#7A4308;
+          --todo:#9AA1AC; --progress:#E8871E; --done:#2F9E64;
+          --danger:#C0392B;
+          --radius:10px;
+        }
+        *{box-sizing:border-box;}
+        body{
+          margin:0; background:var(--bg); color:var(--ink);
+          font-family:'Inter',system-ui,sans-serif; font-size:15px;
+        }
+        a{color:inherit;}
+
+        /* Top bar */
+        header{
+          background:var(--ink); color:#fff; padding:14px 24px;
+          display:flex; align-items:center; justify-content:space-between;
+        }
+        .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px; letter-spacing:-0.01em;}
+        .brand .mark{
+          width:26px; height:26px; border-radius:7px; background:var(--accent);
+          display:flex; align-items:center; justify-content:center; color:var(--ink); font-weight:700; font-size:14px;
+        }
+        .nav-right{display:flex; align-items:center; gap:16px;}
+        .who{font-size:14px; color:#C9CDD4;}
+        .btn-ghost{
+          background:transparent; border:1px solid #3A4453; color:#fff; padding:6px 12px;
+          border-radius:7px; font-size:13px; cursor:pointer;
+        }
+        .btn-ghost:hover{background:#2A3341;}
+
+        .bell{position:relative; background:transparent; border:none; color:#fff; font-size:17px; cursor:pointer; padding:4px;}
+        .bell .dot{
+          position:absolute; top:-2px; right:-2px; background:var(--danger); color:#fff;
+          font-size:10px; min-width:16px; height:16px; border-radius:8px; display:none;
+          align-items:center; justify-content:center; font-weight:600;
+        }
+        .notif-panel{
+          position:absolute; right:24px; top:56px; width:300px; background:var(--surface);
+          border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 12px 32px rgba(0,0,0,.16);
+          display:none; z-index:20; max-height:320px; overflow-y:auto;
+        }
+        .notif-item{padding:10px 14px; font-size:13.5px; border-bottom:1px solid var(--line);}
+        .notif-empty{padding:16px 14px; color:var(--ink-soft); font-size:13.5px;}
+
+        /* Login */
+        .auth-wrap{max-width:380px; margin:90px auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:32px;}
+        .auth-wrap h1{font-size:19px; margin:0 0 4px;}
+        .auth-wrap p.sub{color:var(--ink-soft); font-size:13.5px; margin:0 0 22px;}
+        .tabs{display:flex; gap:4px; margin-bottom:20px; background:var(--bg); border-radius:8px; padding:3px;}
+        .tab-btn{flex:1; padding:8px; border:none; background:transparent; border-radius:6px; font-size:13.5px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+        .tab-btn.active{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08);}
+        input, select{
+          width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:7px;
+          font-size:14px; font-family:inherit; margin-bottom:10px; background:#fff; color:var(--ink);
+        }
+        input:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+        .btn{
+          background:var(--ink); color:#fff; border:none; padding:10px 16px; border-radius:7px;
+          font-size:14px; font-weight:600; cursor:pointer; width:100%;
+        }
+        .btn:hover{background:#2A3341;}
+        .btn:disabled{opacity:.6; cursor:default;}
+        .btn-accent{background:var(--accent); color:var(--ink);}
+        .btn-accent:hover{background:#D67A16;}
+        .btn-sm{width:auto; padding:7px 12px; font-size:13px;}
+        .btn-outline{background:transparent; border:1px solid var(--line); color:var(--ink);}
+        .btn-outline:hover{background:var(--bg);}
+
+        /* App layout */
+        .app{display:none; max-width:1180px; margin:0 auto; padding:24px 20px 60px; gap:20px; grid-template-columns:240px 1fr;}
+        .app.show{display:grid;}
+        .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+        .panel h3{font-size:12.5px; text-transform:none; color:var(--ink-soft); font-weight:600; margin:0 0 10px;}
+        .panel + .panel{margin-top:16px;}
+        .row-input{display:flex; gap:6px;}
+        .row-input input{margin-bottom:0;}
+        .member-row{display:flex; align-items:center; gap:8px; font-size:13.5px; padding:5px 0;}
+        .avatar{
+          width:22px; height:22px; border-radius:50%; background:var(--accent); color:var(--ink);
+          display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;
+        }
+        .empty-note{color:var(--ink-soft); font-size:13px;}
+
+        .board-top{display:flex; gap:10px; margin-bottom:16px;}
+        .board-top input{margin-bottom:0; flex:1;}
+        .board-top button{width:auto; padding:10px 18px;}
+
+        .board{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+        .col{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; border-top:3px solid var(--todo); min-height:280px;}
+        .col.progress{border-top-color:var(--progress);}
+        .col.done{border-top-color:var(--done);}
+        .col-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+        .col-head span.name{font-weight:600; font-size:13.5px;}
+        .col-head span.count{color:var(--ink-soft); font-size:12px;}
+
+        .card{background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px;}
+        .card .title{font-weight:600; font-size:13.8px; margin-bottom:8px; line-height:1.35;}
+        .card select{margin-bottom:8px; font-size:12.5px; padding:6px 8px;}
+        .card .move{font-size:12px; padding:6px 10px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--ink);}
+        .card .move:hover{border-color:var(--ink);}
+        .card .comments-toggle{font-size:12px; color:var(--ink-soft); background:none; border:none; cursor:pointer; padding:8px 0 0; text-decoration:underline;}
+        .comment-box{background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; margin-top:6px;}
+        .comment-row{display:flex; gap:6px; margin-top:6px;}
+        .comment-row input{margin-bottom:0; font-size:12.5px; padding:7px 8px;}
+
+        .log-panel{margin-top:22px;}
+        .log-panel h3{margin-bottom:8px;}
+        #log{
+          background:#12161D; color:#8FE3C0; font-family:'SFMono-Regular',Consolas,monospace;
+          font-size:11.5px; padding:12px; height:130px; overflow-y:auto; border-radius:8px; line-height:1.6;
+        }
+
+        @media (max-width:820px){
+          .app{grid-template-columns:1fr;}
+          .board{grid-template-columns:1fr;}
+        }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark px-3 d-flex justify-content-between">
-    <span class="navbar-brand mb-0 h1">PM Tool</span>
-    <div class="d-flex align-items-center gap-3" id="navRight" style="display:none;">
-        <div class="dropdown">
-            <button class="btn btn-outline-light btn-sm position-relative" data-bs-toggle="dropdown" onclick="loadNotifications()">
-                🔔 <span id="notifCount" class="badge bg-danger" style="display:none;">0</span>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end p-0" id="notifDropdown" style="min-width:280px;">
-                <div class="p-2 text-muted small">No notifications yet</div>
-            </div>
+<header>
+    <div class="brand"><span class="mark">P</span> PM Tool</div>
+    <div class="nav-right" id="navRight" style="display:none;">
+        <div style="position:relative;">
+            <button class="bell" onclick="toggleNotifs()">🔔<span class="dot" id="notifCount">0</span></button>
+            <div class="notif-panel" id="notifDropdown"><div class="notif-empty">No notifications yet</div></div>
         </div>
-        <span class="text-light" id="whoami"></span>
-        <button class="btn btn-sm btn-outline-light" onclick="logout()">Log out</button>
+        <span class="who" id="whoami"></span>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
     </div>
-</nav>
+</header>
 
-<div id="login-section" class="card shadow-sm p-4">
-    <ul class="nav nav-tabs mb-3">
-        <li class="nav-item"><button class="nav-link active" onclick="showTab('login')" id="loginTabBtn">Log in</button></li>
-        <li class="nav-item"><button class="nav-link" onclick="showTab('register')" id="registerTabBtn">Register</button></li>
-    </ul>
-
+<div class="auth-wrap" id="login-section">
+    <h1>Welcome back</h1>
+    <p class="sub">Sign in to your workspace, or create a new account.</p>
+    <div class="tabs">
+        <button class="tab-btn active" id="loginTabBtn" onclick="showTab('login')">Log in</button>
+        <button class="tab-btn" id="registerTabBtn" onclick="showTab('register')">Register</button>
+    </div>
     <div id="loginTab">
-        <input id="email" class="form-control mb-2" placeholder="Email" />
-        <input id="password" type="password" class="form-control mb-3" placeholder="Password" />
-        <button class="btn btn-primary w-100" onclick="login()">Log in</button>
+        <input id="email" placeholder="Email" />
+        <input id="password" type="password" placeholder="Password" />
+        <button class="btn btn-accent" onclick="login()">Log in</button>
     </div>
-
     <div id="registerTab" style="display:none;">
-        <input id="regFullName" class="form-control mb-2" placeholder="Full name" />
-        <input id="regEmail" class="form-control mb-2" placeholder="Email" />
-        <input id="regPassword" type="password" class="form-control mb-3" placeholder="Password (min 6 chars)" />
-        <button class="btn btn-success w-100" onclick="register()">Create account</button>
+        <input id="regFullName" placeholder="Full name" />
+        <input id="regEmail" placeholder="Email" />
+        <input id="regPassword" type="password" placeholder="Password (min 6 characters)" />
+        <button class="btn btn-accent" onclick="register()">Create account</button>
     </div>
 </div>
 
-<div id="board-section" class="container-fluid py-4" style="display:none;">
-    <div class="row g-3">
-        <div class="col-md-3">
-            <div class="sidebar mb-3">
-                <label class="form-label small text-muted mb-1">Project</label>
-                <select id="projectSelect" class="form-select mb-2" onchange="onProjectChange()"></select>
-                <div class="input-group input-group-sm">
-                    <input id="newProjectName" class="form-control" placeholder="New project name" />
-                    <button class="btn btn-outline-primary" onclick="createProject()">Add</button>
-                </div>
+<div class="app" id="board-section">
+    <div>
+        <div class="panel">
+            <h3>Project</h3>
+            <select id="projectSelect" onchange="onProjectChange()"></select>
+            <div class="row-input">
+                <input id="newProjectName" placeholder="New project name" />
+                <button class="btn btn-outline btn-sm" onclick="createProject()">Add</button>
             </div>
+        </div>
+        <div class="panel">
+            <h3>Members</h3>
+            <div id="membersList"><div class="empty-note">No members yet</div></div>
+            <div class="row-input" style="margin-top:8px;">
+                <input id="newMemberEmail" placeholder="Invite by email" />
+                <button class="btn btn-outline btn-sm" onclick="addMember()">Invite</button>
+            </div>
+        </div>
+    </div>
 
-            <div class="sidebar">
-                <label class="form-label small text-muted mb-1">Members</label>
-                <div id="membersList" class="mb-2 small"></div>
-                <div class="input-group input-group-sm">
-                    <input id="newMemberEmail" class="form-control" placeholder="Invite by email" />
-                    <button class="btn btn-outline-secondary" onclick="addMember()">Invite</button>
-                </div>
+    <div>
+        <div class="board-top">
+            <input id="taskTitle" placeholder="New task title" />
+            <button class="btn btn-accent" onclick="createTask()">Add task</button>
+        </div>
+
+        <div class="board">
+            <div class="col">
+                <div class="col-head"><span class="name">To do</span><span class="count" id="count-TODO">0</span></div>
+                <div id="col-TODO"></div>
+            </div>
+            <div class="col progress">
+                <div class="col-head"><span class="name">In progress</span><span class="count" id="count-IN_PROGRESS">0</span></div>
+                <div id="col-IN_PROGRESS"></div>
+            </div>
+            <div class="col done">
+                <div class="col-head"><span class="name">Done</span><span class="count" id="count-DONE">0</span></div>
+                <div id="col-DONE"></div>
             </div>
         </div>
 
-        <div class="col-md-9">
-            <div class="d-flex gap-2 mb-3">
-                <input id="taskTitle" class="form-control" placeholder="New task title" style="max-width:300px" />
-                <button class="btn btn-success" onclick="createTask()">Add task</button>
-            </div>
-
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <div class="board-col"><h6>To Do</h6><div id="col-TODO"></div></div>
-                </div>
-                <div class="col-md-4">
-                    <div class="board-col"><h6>In Progress</h6><div id="col-IN_PROGRESS"></div></div>
-                </div>
-                <div class="col-md-4">
-                    <div class="board-col"><h6>Done</h6><div id="col-DONE"></div></div>
-                </div>
-            </div>
-
-            <h6 class="mt-4 mb-2 text-muted">Live event log</h6>
+        <div class="log-panel">
+            <h3 style="color:var(--ink-soft); font-weight:600; font-size:12.5px;">Live event log</h3>
             <div id="log"></div>
         </div>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
