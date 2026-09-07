@@ -300,4 +300,3 @@ async function loadNotifications() {
     notifCount = 0;
     document.getElementById("notifCount").style.display = "none";
 }
-</script>
